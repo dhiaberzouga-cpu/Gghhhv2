@@ -1,0 +1,235 @@
+-- Full Local Avatar Copier (Headless + Korblox Fixed)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+local function getGuiParent()
+	local success, result = pcall(function()
+		return gethui()
+	end)
+	if success and result then return result end
+
+	local success2, core = pcall(function()
+		return game:GetService("CoreGui")
+	end)
+	if success2 and core then return core end
+
+	return LocalPlayer:WaitForChild("PlayerGui")
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "FullSkinCopier_Fixed"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = getGuiParent()
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 310, 0, 160)
+Frame.Position = UDim2.new(0.5, -155, 0.2, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+Frame.BorderSizePixel = 0
+Frame.Active = true
+Frame.Draggable = true
+Frame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = Frame
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.BackgroundTransparency = 1
+Title.Text = "Full Skin Copier"
+Title.TextColor3 = Color3.fromRGB(0, 200, 255)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 17
+Title.Parent = Frame
+
+local TextBox = Instance.new("TextBox")
+TextBox.Size = UDim2.new(1, -20, 0, 38)
+TextBox.Position = UDim2.new(0, 10, 0, 42)
+TextBox.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
+TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.PlaceholderText = "Enter Username..."
+TextBox.PlaceholderColor3 = Color3.fromRGB(130, 130, 130)
+TextBox.Font = Enum.Font.Gotham
+TextBox.TextSize = 15
+TextBox.ClearTextOnFocus = false
+TextBox.Text = ""
+TextBox.Parent = Frame
+
+local BoxCorner = Instance.new("UICorner")
+BoxCorner.CornerRadius = UDim.new(0, 8)
+BoxCorner.Parent = TextBox
+
+local CopyButton = Instance.new("TextButton")
+CopyButton.Size = UDim2.new(0.48, -6, 0, 40)
+CopyButton.Position = UDim2.new(0, 10, 0, 95)
+CopyButton.BackgroundColor3 = Color3.fromRGB(0, 160, 255)
+CopyButton.Text = "Copy Full Skin"
+CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CopyButton.Font = Enum.Font.GothamBold
+CopyButton.TextSize = 14
+CopyButton.Parent = Frame
+
+local ButtonCorner = Instance.new("UICorner")
+ButtonCorner.CornerRadius = UDim.new(0, 8)
+ButtonCorner.Parent = CopyButton
+
+local RemoveButton = Instance.new("TextButton")
+RemoveButton.Size = UDim2.new(0.48, -6, 0, 40)
+RemoveButton.Position = UDim2.new(0.52, 0, 0, 95)
+RemoveButton.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+RemoveButton.Text = "Remove"
+RemoveButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+RemoveButton.Font = Enum.Font.GothamBold
+RemoveButton.TextSize = 14
+RemoveButton.Parent = Frame
+
+local RemoveCorner = Instance.new("UICorner")
+RemoveCorner.CornerRadius = UDim.new(0, 8)
+RemoveCorner.Parent = RemoveButton
+
+local currentOverlay = nil
+local connection = nil
+
+local function clearOldOverlay()
+	if connection then
+		connection:Disconnect()
+		connection = nil
+	end
+	if currentOverlay then
+		currentOverlay:Destroy()
+		currentOverlay = nil
+	end
+
+	local char = LocalPlayer.Character
+	if char then
+		for _, part in pairs(char:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.LocalTransparencyModifier = 0
+			elseif part:IsA("Decal") or part:IsA("Texture") then
+				part.Transparency = 0
+			end
+		end
+	end
+end
+
+local function applyFullAvatar(username)
+	clearOldOverlay()
+
+	local success, userId = pcall(function()
+		return Players:GetUserIdFromNameAsync(username)
+	end)
+
+	if not success or not userId then
+		CopyButton.Text = "Invalid Username!"
+		task.wait(1.8)
+		CopyButton.Text = "Copy Full Skin"
+		return
+	end
+
+	CopyButton.Text = "Loading..."
+
+	local modelSuccess, model = pcall(function()
+		return Players:CreateHumanoidModelFromUserIdAsync(userId)
+	end)
+
+	if not modelSuccess or not model then
+		CopyButton.Text = "Failed to load"
+		task.wait(1.8)
+		CopyButton.Text = "Copy Full Skin"
+		return
+	end
+
+	task.wait(1.5)
+
+	local character = LocalPlayer.Character
+	if not character then
+		model:Destroy()
+		CopyButton.Text = "No Character"
+		task.wait(1.5)
+		CopyButton.Text = "Copy Full Skin"
+		return
+	end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then
+		model:Destroy()
+		return
+	end
+
+	for _, part in pairs(character:GetDescendants()) do
+		if part:IsA("BasePart") and part.Name \~= "HumanoidRootPart" then
+			part.LocalTransparencyModifier = 1
+		elseif part:IsA("Decal") or part:IsA("Texture") then
+			part.Transparency = 1
+		end
+	end
+
+	model.Name = "LocalAvatarOverlay"
+	model.Parent = workspace
+
+	local overlayHRP = model:FindFirstChild("HumanoidRootPart")
+	if not overlayHRP then
+		model:Destroy()
+		clearOldOverlay()
+		return
+	end
+
+	overlayHRP.Anchored = false
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = hrp
+	weld.Part1 = overlayHRP
+	weld.Parent = overlayHRP
+
+	model:PivotTo(hrp.CFrame)
+
+	local overlayHum = model:FindFirstChildOfClass("Humanoid")
+	if overlayHum then
+		overlayHum.PlatformStand = true
+		overlayHum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	end
+
+	currentOverlay = model
+
+	connection = RunService.RenderStepped:Connect(function()
+		if currentOverlay and currentOverlay.Parent and hrp and hrp.Parent then
+			currentOverlay:PivotTo(hrp.CFrame)
+		else
+			clearOldOverlay()
+		end
+	end)
+
+	CopyButton.Text = "Copied!"
+	task.wait(1.5)
+	CopyButton.Text = "Copy Full Skin"
+end
+
+CopyButton.MouseButton1Click:Connect(function()
+	local username = TextBox.Text:gsub("%s+", "")
+	if username == "" then return end
+	applyFullAvatar(username)
+end)
+
+RemoveButton.MouseButton1Click:Connect(function()
+	clearOldOverlay()
+	RemoveButton.Text = "Removed"
+	task.wait(1)
+	RemoveButton.Text = "Remove"
+end)
+
+Frame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		clearOldOverlay()
+		ScreenGui:Destroy()
+	end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function()
+	task.wait(1.2)
+	clearOldOverlay()
+end)
+
+print("Full Skin Copier loaded successfully!")
